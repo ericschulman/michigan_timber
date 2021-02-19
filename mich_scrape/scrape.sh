@@ -1,0 +1,2 @@
+wget -r -np -nH --cut-dirs=4 -e robots=off -U Mozilla   http://www.michigandnr.com/ftp/forestry/tsreports/bidopen/
+wget -r -np -nH --cut-dirs=4 -e robots=off -U Mozilla   http://www.michigandnr.com/ftp/forestry/tsreports/opensales/
