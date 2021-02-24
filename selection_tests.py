@@ -13,7 +13,21 @@ import statsmodels.api as sm
 from statsmodels.base.model import GenericLikelihoodModel
 
 
+def potential_bidders(df,date_name='Bid Open Date',bidder_name='Bidder Name' ):
 
+    df_edit = df.copy()
+    df_edit['month_year'] = pd.to_datetime(
+        df_edit[date_name]).dt.to_period('M').astype(str)
+    new_dict = df_edit.groupby('month_year').apply(
+        lambda x: x[bidder_name].unique().tolist()).to_dict()
+
+    delete = ['2013-05', 'NaT']
+    #for d in delete:
+    #    del new_dict[d]
+    #print(len(new_dict))
+    print(dict(sorted(new_dict.items())))
+
+    
 def create_panel(df,time_col,cross_col,time_attr,cross_attr):
     """ time_col = name of time column
     cross_col = name of cross-sectional unit column
