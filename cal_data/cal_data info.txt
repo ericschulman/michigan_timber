@@ -18,6 +18,7 @@ Work Catagories (cat1-cat4 in the data set)
 - Spilt projects into 5 categories: bridge work, landscaping, road repair, signs signals and lighting, small building work. The paper uses this to see if the type of project impacts the costs of the firm.
 
 Number of small plan holders  (sbplanh in the data set) - The number of small companies who purchase the plan documents. The paper uses this as the number of firms that plan to bid.
+
  Number of large plan holders  (lgplanh in the data set)
 - The number of large companies who purchase the plan documents. The paper uses this as the number of firms that plan to bid.
 
