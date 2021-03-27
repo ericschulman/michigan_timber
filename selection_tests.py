@@ -64,11 +64,12 @@ def create_panel(df,time_col,cross_col,time_attr,cross_attr):
 
 class Tobit(GenericLikelihoodModel):
     
-    def __init__(self, *args, error_distr=stats.norm, **kwargs):
-        self.error_distr = error_distr
+    def __init__(self, *args,ols=False, **kwargs):
         super(Tobit,self).__init__(*args,**kwargs)
         self._set_extra_params_names(['var'])
         self.start_params = np.array([1]*(self.exog.shape[1]+1))
+        self.ols = ols
+        #2 sets of params for z, 1 for x, 2 variances...
     
     def loglikeobs(self, params):
         y = self.endog
@@ -80,62 +81,66 @@ class Tobit(GenericLikelihoodModel):
         
         mu_y = np.matmul(x,beta)
         
-        pr_y = self.error_distr.logpdf( y, loc = mu_y, scale=np.sqrt(sigma2))
-        pr_m = self.error_distr.logcdf( y, loc = mu_y, scale=np.sqrt(sigma2))
-        ll =  (1-m)*pr_y + m*pr_m
-        return ll
-    
-    #if needed can add in score function...
+        pr_y = stats.norm.logpdf( y, loc = mu_y, scale=np.sqrt(sigma2))
+        pr_m = stats.norm.logcdf( y, loc = mu_y, scale=np.sqrt(sigma2))
+        
+        #we're done if ols
+        if self.ols:
+            return pr_y
+        else:
+            ll = (1-m)*pr_y + m*pr_m
+            return ll
 
 # TODO 3: Get LLR test classic version working
 
-def compute_llr(yn,xn):
-    #fit normal values
+def setup_test(yn,xn):
     model1 = Tobit(yn,sm.add_constant(xn))
     model1_fit = model1.fit(disp=False)
     ll1 = model1.loglikeobs(model1_fit.params)
+    grad1 =  model1.score_obs(model1_fit.params)    
+    hess1 = model1.hessian(model1_fit.params)
+    params1 = model1_fit.params
     
     #fit logistic values
-    model2 = Tobit(yn,sm.add_constant(xn),error_distr=stats.logistic)
+    model2 = Tobit(yn,sm.add_constant(xn),ols=True)
     model2_fit = model2.fit(disp=False)
     ll2 = model2.loglikeobs(model2_fit.params)
+    grad2 =  model2.score_obs(model2_fit.params)    
+    hess2 = model2.hessian(model2_fit.params)
+    params2 = model2_fit.params
     
-    llr = ll1.sum() - ll2.sum()
-    omega2 = (ll1- ll2).var()
-    return llr,np.sqrt(omega2)
+    return ll1,grad1,hess1,ll2,params1, grad2,hess2,params2
 
 
-def regular_test(yn,xn,nobs,compute_llr,hist=False):
-    llr, omega = compute_llr(yn,xn)
+def regular_test(yn,xn,setup_test):
+    ll1,grad1,hess1,ll2,params1, grad2,hess2,params2 = setup_test(yn,xn)
+    nobs = ll1.shape[0]
+    llr = (ll1 - ll2).sum()
+    omega = np.sqrt( (ll1 -ll2).var())
     test_stat = llr/(omega*np.sqrt(nobs))
-    if hist:
-        x = np.linspace(-2.5, 2.5, 100)
-        plt.plot(x, stats.norm.pdf(x, 0, 1),label="Normal")
-    
     return 1*(test_stat >= 1.96) + 2*( test_stat <= -1.96)
 
 
 # TODO 4: Get Bootstrap test working
 
-def bootstrap_test(yn,xn,nobs,compute_llr,hist=False):
+def bootstrap_test(yn,xn,setup_test):
+    ll1,grad1,hess1,ll2,params1, grad2,hess2,params2 = setup_test(yn,xn)
+    nobs = ll1.shape[0]
     test_stats = []
-    trials = 100
+    variance_stats = []
+    llr = ll1-ll2
+     
     for i in range(trials):
-        subn = 1000
         np.random.seed()
-        sample  = np.random.choice(np.arange(0,nobs),subn,replace=True)
-        ys,xs = yn[sample],xn[sample]
-        llr, omega = compute_llr(ys,xs)
-        test_stat = llr/(omega*np.sqrt(subn))
-        test_stats.append(test_stat)
-        
-    llr, omega = compute_llr(yn,xn)
-    test_stat = llr/(omega*np.sqrt(nobs))
+        sample  = np.random.choice(np.arange(0,nobs),nobs,replace=True)
+        llrs = llr[sample]
+        test_stats.append( llrs.sum() )
+        variance_stats.append( llrs.var() )
     
-    #plot
-    if hist:
-        plt.hist( 2*test_stat - test_stats, density=True,bins=10, label="Bootstrap")
+    #final product
+    test_stats = np.array(test_stats)
+    variance_stats = np.sqrt(variance_stats)*np.sqrt(nobs)
     
-    cv_lower = 2*test_stat - np.percentile(test_stats, 97.5, axis=0)
-    cv_upper = 2*test_stat -  np.percentile(test_stats, 2.5, axis=0)
+    cv_lower = 2*test_stat - np.percentile(test_stats/variance_stats, 97.5, axis=0)
+    cv_upper = 2*test_stat -  np.percentile(test_stats/variance_stats, 2.5, axis=0)
     return  2*(0 >= cv_upper) + 1*(0 <= cv_lower)
