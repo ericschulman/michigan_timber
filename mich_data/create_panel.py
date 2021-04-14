@@ -2,10 +2,28 @@ import pandas as pd
 import numpy as np
 import datetime
 
+# def merge_data(mich_sales = pd.read_csv('mich_sales.csv'),mich_bids = pd.read_csv('mich_bids.csv')):
+def merge_data(mich_bids,mich_sales):
+    mich_bids = mich_bids[mich_bids['Bid Open Location'] == 'Baldwin Office']
+    mich_sales = pd.read_csv('mich_sales.csv')
+    reformated_salenum = []
+    for row in mich_bids['Sale #']:
+        reformated_salenum.append(int(row.replace('-','')))
+
+    mich_bids['Sale #'] = reformated_salenum
+
+    mich_sales = mich_sales.rename(columns={"Sale Number": 'Sale #'})
+    
+    mich_sales_grouped = mich_sales.groupby('Sale #').mean()
+
+    mich_data_merged = mich_bids.merge( mich_sales, on='Sale #')
+
+    return mich_data_merged
 
 def add_potential_bidders(df, date_name='Bid Open Date', bidder_name='Bidder Name'):
     # Baldwin Office
     df_edit = df.copy()
+    print(df_edit[date_name])
     df_edit['month_year'] = pd.to_datetime(
         df_edit[date_name]).dt.to_period('M').astype(str)
     new_dict_1 = df_edit.groupby('month_year').apply(
@@ -51,7 +69,7 @@ def add_potential_bidders(df, date_name='Bid Open Date', bidder_name='Bidder Nam
     print(bid_merge)
 
     # Merge auction characteristics with this dataframe
-    auction_characteristics = ['Estimated Volume', 'Appraised Value Per Unit']
+    auction_characteristics = ['Estimated Volume', 'Appraised Value Per Unit','Acres','Length(days)','Received', 'Value','Volume']
 
     # convert Highest column to dummies
     pd.get_dummies(df_edit, columns=['Highest'])
@@ -61,12 +79,17 @@ def add_potential_bidders(df, date_name='Bid Open Date', bidder_name='Bidder Nam
         ['month_year', 'Sale #']).mean()
     auction_merge = bid_merge.merge(
         auction_array, on=['month_year', 'Sale #'], how='left')
-    return auction_merge
-
-
+    
+    df4= df1.groupby('month_year').agg({
+    'Bidder Name': ['count']})
+    
+    final_merge = pd.merge(df4,auction_merge,how = 'left', on="month_year")
+    print(final_merge)
+    
+    return final_merge
+    
 if __name__ == "__main__":
-    df = pd.read_csv("mich_bids.csv")
-    baldwin_office = pd.DataFrame(
-        df[df['Bid Open Location'] == "Baldwin Office"])
-    add_potential_bidders(baldwin_office, date_name='Bid Open Date',
-                          bidder_name='Bidder Name').to_csv('panel.csv', index=False)
+    mich_bids = pd.read_csv('mich_bids.csv')
+    mich_sales = pd.read_csv('mich_sales.csv')
+    add_potential_bidders(merge_data(mich_bids,mich_sales), 'Bid Open Date',
+                          'Bidder Name').to_csv('panel.csv', index=False)
