@@ -9,7 +9,12 @@ def merge_data(mich_bids,mich_sales):
     reformated_salenum = []
     for row in mich_bids['Sale #']:
         reformated_salenum.append(int(row.replace('-','')))
-
+        
+    
+    acc_bidders = mich_bids.groupby('Sale #').nunique()
+    acc_bidders = acc_bidders.rename(columns={"Bidder Name": 'acc_bidders'})
+    mich_bids = mich_bids.merge(acc_bidders['acc_bidders'], on= 'Sale #')
+    
     mich_bids['Sale #'] = reformated_salenum
 
     mich_sales = mich_sales.rename(columns={"Sale Number": 'Sale #'})
@@ -19,6 +24,7 @@ def merge_data(mich_bids,mich_sales):
     mich_data_merged = mich_bids.merge( mich_sales, on='Sale #')
 
     return mich_data_merged
+
 
 def add_potential_bidders(df, date_name='Bid Open Date', bidder_name='Bidder Name'):
     # Baldwin Office
@@ -37,7 +43,7 @@ def add_potential_bidders(df, date_name='Bid Open Date', bidder_name='Bidder Nam
     df1 = pd.DataFrame.from_dict(Dict_1, orient="index").sort_index(
     ).stack().reset_index(level=1, drop=True).reset_index()
     df1.columns = ['month_year', 'Bidder Name']
-    print(df1)
+#     print(df1)
 
     # Create dataframe with (1) sale-# and (2) month
     new_dict_2 = df_edit.groupby('month_year').apply(
@@ -49,11 +55,11 @@ def add_potential_bidders(df, date_name='Bid Open Date', bidder_name='Bidder Nam
     df2 = pd.DataFrame.from_dict(Dict_2, orient="index").sort_index(
     ).stack().reset_index(level=1, drop=True).reset_index()
     df2.columns = ['month_year', 'Sale #']
-    print(df2)
+#     print(df2)
 
     # Take cross product between the two dataframes and merge based on month
     df3 = df1.merge(df2, on='month_year', how='outer')
-    print(df3)
+#     print(df3)
 
     # Merge bidder characteristics with this dataframe
     bidder_characteristics = ['Bid Per Unit', 'Highest']
@@ -66,10 +72,10 @@ def add_potential_bidders(df, date_name='Bid Open Date', bidder_name='Bidder Nam
         ['month_year', 'Bidder Name', 'Sale #']).mean()
     bid_merge = df3.merge(
         bid_array, on=['month_year', 'Bidder Name', 'Sale #'], how='left')
-    print(bid_merge)
+#     print(bid_merge)
 
     # Merge auction characteristics with this dataframe
-    auction_characteristics = ['Estimated Volume', 'Appraised Value Per Unit','Acres','Length(days)','Received', 'Value','Volume']
+    auction_characteristics = ['Estimated Volume', 'Appraised Value Per Unit','Acres','Length(days)','Received', 'Value','Volume','acc_bidders']
 
     # convert Highest column to dummies
     pd.get_dummies(df_edit, columns=['Highest'])
@@ -84,6 +90,7 @@ def add_potential_bidders(df, date_name='Bid Open Date', bidder_name='Bidder Nam
     'Bidder Name': ['count']})
     
     final_merge = pd.merge(df4,auction_merge,how = 'left', on="month_year")
+    
     print(final_merge)
     
     return final_merge
