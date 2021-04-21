@@ -10,12 +10,22 @@ def merge_data(mich_bids,mich_sales):
     for row in mich_bids['Sale #']:
         reformated_salenum.append(int(row.replace('-','')))
         
-    
+    # actual bidders
     acc_bidders = mich_bids.groupby('Sale #').nunique()
     acc_bidders = acc_bidders.rename(columns={"Bidder Name": 'acc_bidders'})
     mich_bids = mich_bids.merge(acc_bidders['acc_bidders'], on= 'Sale #')
     
     mich_bids['Sale #'] = reformated_salenum
+    
+    #make Highest_HIGHEST
+    Highest_HIGHEST = []
+    for row in mich_bids['Highest']:
+        if row == 'HIGHEST':
+            Highest_HIGHEST.append(1)
+        else:
+            Highest_HIGHEST.append(0)
+    
+    mich_bids['Highest_HIGHEST'] = Highest_HIGHEST
 
     mich_sales = mich_sales.rename(columns={"Sale Number": 'Sale #'})
     
@@ -43,10 +53,7 @@ def add_potential_bidders(df, date_name='Bid Open Date', bidder_name='Bidder Nam
     df1 = pd.DataFrame.from_dict(Dict_1, orient="index").sort_index(
     ).stack().reset_index(level=1, drop=True).reset_index()
     df1.columns = ['month_year', 'Bidder Name']
-<<<<<<< HEAD
 #     print(df1)
-=======
->>>>>>> 44034e8bb3c336780d09c1f82f87296258595e9c
 
     # Create dataframe with (1) sale-# and (2) month
     new_dict_2 = df_edit.groupby('month_year').apply(
@@ -58,41 +65,30 @@ def add_potential_bidders(df, date_name='Bid Open Date', bidder_name='Bidder Nam
     df2 = pd.DataFrame.from_dict(Dict_2, orient="index").sort_index(
     ).stack().reset_index(level=1, drop=True).reset_index()
     df2.columns = ['month_year', 'Sale #']
-<<<<<<< HEAD
 #     print(df2)
 
     # Take cross product between the two dataframes and merge based on month
     df3 = df1.merge(df2, on='month_year', how='outer')
 #     print(df3)
-=======
-
-    # Take cross product between the two dataframes and merge based on month
-    df3 = df1.merge(df2, on='month_year', how='outer')
->>>>>>> 44034e8bb3c336780d09c1f82f87296258595e9c
 
     # Merge bidder characteristics with this dataframe
-    bidder_characteristics = ['Bid Per Unit', 'Highest_HIGHEST']
+    bidder_characteristics = ['Bid Per Unit', 'Highest']
 
     # convert Highest column to dummies
-    df_edit = pd.get_dummies(df_edit, columns=['Highest'])
+    pd.get_dummies(df_edit, columns=['Highest'])
     bid_array = df_edit[['month_year', 'Bidder Name', 'Sale #'] +
                         bidder_characteristics].copy()
     bid_array = bid_array.groupby(
         ['month_year', 'Bidder Name', 'Sale #']).mean()
     bid_merge = df3.merge(
         bid_array, on=['month_year', 'Bidder Name', 'Sale #'], how='left')
-<<<<<<< HEAD
 #     print(bid_merge)
-=======
-
-    # convert NaNs in Highest column to 0
-    bid_merge['Highest_HIGHEST'] = bid_merge['Highest_HIGHEST'].fillna(
-        0)
->>>>>>> 44034e8bb3c336780d09c1f82f87296258595e9c
 
     # Merge auction characteristics with this dataframe
-    auction_characteristics = ['Estimated Volume', 'Appraised Value Per Unit','Acres','Length(days)','Received', 'Value','Volume','acc_bidders']
+    auction_characteristics = ['Estimated Volume', 'Appraised Value Per Unit','Acres','Length(days)','Received', 'Value','Volume','acc_bidders', 'Highest_HIGHEST']
 
+    # convert Highest column to dummies
+    pd.get_dummies(df_edit, columns=['Highest'])
     auction_array = df_edit[['month_year', 'Bidder Name', 'Sale #'] +
                             auction_characteristics].copy()
     auction_array = auction_array.groupby(
