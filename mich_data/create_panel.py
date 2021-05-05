@@ -95,19 +95,19 @@ def add_potential_bidders(df, date_name='Bid Open Date', bidder_name='Bidder Nam
     auction_characteristics = ['Estimated Volume', 'Appraised Value Per Unit','Acres','Length(days)','Received', 'Value','Volume','acc_bidders']
 
     # convert Highest column to dummies
-    auction_array = df_edit[['month_year', 'Bidder Name', 'Sale #'] +
+    auction_array = df_edit[['month_year', 'Bidder Name', 'Sale #','Units'] +
                             auction_characteristics].copy()
     auction_array = auction_array.groupby(
-        ['month_year', 'Sale #']).mean()
+        ['month_year', 'Sale #','Units']).mean()
     auction_merge = bid_merge.merge(
-        auction_array, on=['month_year', 'Sale #'], how='left')
+        auction_array, on=['month_year', 'Sale #','Units'], how='left')
     
     df4= df1.groupby('month_year').agg({
     'Bidder Name': ['count']})
     
-    final_merge = pd.merge(df4,auction_merge,how = 'left', on="month_year")
+    final_merge = pd.merge(df4,auction_merge,how = 'left', on=["month_year"])
     
-#     print(final_merge)
+    print(final_merge)
     
     return final_merge
     
