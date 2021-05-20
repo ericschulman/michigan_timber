@@ -68,8 +68,13 @@ class Tobit(GenericLikelihoodModel):
     def __init__(self, *args, ols=False, **kwargs):
         super(Tobit, self).__init__(*args, **kwargs)
         self._set_extra_params_names(['var'])
-        self.start_params = np.array([1]*(self.exog.shape[1]+1))
+        #start with OLS as a guess
+        
+        init_model = sm.OLS(self.endog,self.exog).fit()
+        sigma = np.sum(init_model.resid**2)/init_model.resid.shape[0]
+        self.start_params = np.concatenate( (init_model.params,[sigma]) )
         self.ols = ols
+        
         # 2 sets of params for z, 1 for x, 2 variances...
 
     def loglikeobs(self, params):
@@ -78,7 +83,7 @@ class Tobit(GenericLikelihoodModel):
         m = 1*(self.endog == 0)  # missingness
 
         beta = params[0:-1]
-        sigma2 = max(params[-1], 1e-3)
+        sigma2 = max(params[-1], 1e-10)
 
         mu_y = np.matmul(x, beta)
 
@@ -120,7 +125,10 @@ def regular_test(yn, xn, setup_test):
     llr = (ll1 - ll2).sum()
     omega = np.sqrt((ll1 - ll2).var())
     test_stat = llr/(omega*np.sqrt(nobs))
-    return 1*(test_stat >= 1.96) + 2*(test_stat <= -1.96)
+    print('regular: test, llr, omega ----')
+    print(test_stat, llr, omega)
+    print('---- ')
+    return 1*(test_stat >= 1.96) + 2*(test_stat <= -1.96),test_stat
 
 
 # helper functions for bootstrap
@@ -176,7 +184,9 @@ def bootstrap_distr(ll1,grad1,hess1,params1,ll2,grad2,hess2,params2,c=0,trials=5
     #set up test stat   
     omega = np.sqrt((ll1 - ll2).var()*nobs + c*(V*V).sum())
     llr = (ll1 - ll2).sum() +V.sum()/(2)
-
+    print('V ----')
+    print(V.sum()/2)
+    print('----')
     return test_stats,variance_stats,llr,omega
 
 # TODO 4: Get Bootstrap test working
@@ -190,6 +200,20 @@ def bootstrap_test(yn,xn,setup_test,c=0,trials=500):
     
     #set up confidence intervals
     cv_lower = np.percentile(test_stats, 2.5, axis=0)
-    cv_upper = np.percentile(test_stats, 97.5, axis=0) 
+    cv_upper = np.percentile(test_stats, 97.5, axis=0)
+    print('---- bootstrap: llr, omega ----')
+    print(llr,omega)
+    print('----')
 
-    return  2*(0 >= cv_upper) + 1*(0 <= cv_lower)
+    return  2*(0 >= cv_upper) + 1*(0 <= cv_lower), cv_lower, cv_upper
+
+
+def test_table(yn,xn,setup_test, trials=100):
+    result_boot, cv_lower, cv_upper = bootstrap_test(yn,xn,setup_test, trials=trials)
+    result_class, test_stat = regular_test(yn,xn,setup_test)
+
+    print('\\begin{center}\n\\begin{tabular}{cccc}\n\\toprule')
+    print('\\textbf{Version} & \\textbf{Result} & \\textbf{Stat} & \\textbf{95 \\% CI} \\\\ \\midrule' )
+    print('Bootstrap & H%s & -- & [%.3f, %.3f] \\\\'%(result_boot,cv_lower,cv_upper))
+    print('Classical & H%s & %.3f & [1.959, 1.959] \\\\'%(result_class,test_stat))
+    print('\\bottomrule\n\\end{tabular}\n\\end{center}')
