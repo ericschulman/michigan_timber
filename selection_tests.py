@@ -65,43 +65,49 @@ def create_panel(df, time_col, cross_col, time_attr, cross_attr):
 
 class Tobit(GenericLikelihoodModel):
 
-    def __init__(self, *args, ols=False, **kwargs):
+    def __init__(self, *args, ols=False, cc=False, **kwargs):
         super(Tobit, self).__init__(*args, **kwargs)
         self._set_extra_params_names(['var'])
+        self.cutoff = stats.mode(self.endog)[0][0]
         #start with OLS as a guess
-        
-        init_model = sm.OLS(self.endog,self.exog).fit()
+        init_model = sm.OLS(self.endog[self.endog> self.cutoff] ,self.exog[self.endog > self.cutoff,:]).fit()
         sigma = np.sum(init_model.resid**2)/init_model.resid.shape[0]
         self.start_params = np.concatenate( (init_model.params,[sigma]) )
+ 
+        self.cc = cc
         self.ols = ols
         
-        # 2 sets of params for z, 1 for x, 2 variances...
-
     def loglikeobs(self, params):
         y = self.endog
         x = self.exog
-        m = 1*(self.endog == 0)  # missingness
+        m = 1*(self.endog <= self.cutoff) #missingness
 
         beta = params[0:-1]
-        sigma2 = max(params[-1], 1e-10)
-
-        mu_y = np.matmul(x, beta)
-
-        pr_y = stats.norm.logpdf(y, loc=mu_y, scale=np.sqrt(sigma2))
-        pr_m = stats.norm.logcdf(y, loc=mu_y, scale=np.sqrt(sigma2))
-
-        # we're done if ols
+        sigma2 = max(params[-1],1e-10)
+        
+        mu_y = np.matmul(x,beta) #not sure if this is right?
+        pr_y = stats.norm.logpdf( y , loc = self.cutoff + mu_y, scale=np.sqrt(sigma2))
+        
+        #if complete case, assign pr missing to all observations...
+        pr_m = np.log(max(m.mean(),1e-4))
+        if not self.cc:
+            pr_m = stats.norm.logcdf( y , loc = self.cutoff + mu_y, scale=np.sqrt(sigma2))
+        
+        #we're done if ols
         if self.ols:
             return pr_y
         else:
             ll = (1-m)*pr_y + m*pr_m
+            #print( 'obs: %s, missing: %s'%( (1-m).sum(), m.sum() ) ) 
+            #print(('missing ll:%.1f, ols ll: %.1f, seen ll:%.1f')%( (m*pr_m).sum() , ((1-m)*pr_y).sum() , ((1-m)*pr_y + m*pr_m).sum()) )
             return ll
+        
 
 # TODO 3: Get LLR test classic version working
 
 
 def setup_test(yn, xn):
-    model1 = Tobit(yn, sm.add_constant(xn))
+    model1 = Tobit(yn, (xn),cc=True)
     model1_fit = model1.fit(disp=False)
     ll1 = model1.loglikeobs(model1_fit.params)
     grad1 = model1.score_obs(model1_fit.params)
@@ -109,18 +115,18 @@ def setup_test(yn, xn):
     params1 = model1_fit.params
 
     # fit logistic values
-    model2 = Tobit(yn, sm.add_constant(xn), ols=True)
+    model2 = Tobit(yn, (xn))
     model2_fit = model2.fit(disp=False)
     ll2 = model2.loglikeobs(model2_fit.params)
     grad2 = model2.score_obs(model2_fit.params)
     hess2 = model2.hessian(model2_fit.params)
     params2 = model2_fit.params
 
-    return ll1, grad1, hess1, ll2, params1, grad2, hess2, params2
+    return  ll1, grad1, hess1, params1, ll2, grad2, hess2, params2
 
 
 def regular_test(yn, xn, setup_test):
-    ll1, grad1, hess1, ll2, params1, grad2, hess2, params2 = setup_test(yn, xn)
+    ll1, grad1, hess1, params1, ll2, grad2, hess2, params2 = setup_test(yn, xn)
     nobs = ll1.shape[0]
     llr = (ll1 - ll2).sum()
     omega = np.sqrt((ll1 - ll2).var())
@@ -192,7 +198,7 @@ def bootstrap_distr(ll1,grad1,hess1,params1,ll2,grad2,hess2,params2,c=0,trials=5
 # TODO 4: Get Bootstrap test working
 
 def bootstrap_test(yn,xn,setup_test,c=0,trials=500):
-    ll1,grad1,hess1,ll2,params1, grad2,hess2,params2 = setup_test(yn,xn)
+    ll1,grad1,hess1,params1,ll2,grad2,hess2,params2 = setup_test(yn,xn)
 
     #set up bootstrap distr
     test_stats,variance_stats,llr,omega  = bootstrap_distr(ll1,grad1,hess1,params1,ll2,grad2,hess2,params2,c=c,trials=trials)
