@@ -77,6 +77,19 @@ class Tobit(GenericLikelihoodModel):
         self.cc = cc
         self.ols = ols
         
+    def resid(self, params):
+        y = self.endog
+        x = self.exog
+        m = 1*(self.endog <= self.cutoff) #missingness
+
+        beta = params[0:-1]
+        sigma2 = max(params[-1],1e-10)
+        
+        mu_y = np.matmul(x,beta) #not sure if this is right?
+        
+        return  (1-m)*(y - mu_y )
+        
+        
     def loglikeobs(self, params):
         y = self.endog
         x = self.exog
@@ -86,12 +99,18 @@ class Tobit(GenericLikelihoodModel):
         sigma2 = max(params[-1],1e-10)
         
         mu_y = np.matmul(x,beta) #not sure if this is right?
-        pr_y = stats.norm.logpdf( y , loc = self.cutoff + mu_y, scale=np.sqrt(sigma2))
-        
+    
+        pr_y = stats.norm.logpdf( y , loc =  (mu_y), scale=np.sqrt(sigma2))
+        #print('pr',y.shape,pr_y.shape)# 
+        #print(x.shape)
+        #print(y.shape,np.isnan(y).argmax())
+        #print(y[np.isnan(pr_y)])
+
         #if complete case, assign pr missing to all observations...
         pr_m = np.log(max(m.mean(),1e-4))
+
         if not self.cc:
-            pr_m = stats.norm.logcdf( y , loc = self.cutoff + mu_y, scale=np.sqrt(sigma2))
+            pr_m = stats.norm.logcdf( y , loc =  (mu_y) , scale=np.sqrt(sigma2))
         
         #we're done if ols
         if self.ols:
