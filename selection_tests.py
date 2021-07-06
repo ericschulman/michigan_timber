@@ -236,9 +236,8 @@ def bootstrap_test(yn,xn,setup_test,c=0,trials=500):
 def test_table(yn,xn,setup_test, trials=100):
     result_boot, cv_lower, cv_upper = bootstrap_test(yn,xn,setup_test, trials=trials)
     result_class, test_stat = regular_test(yn,xn,setup_test)
-
-    print('\\begin{center}\n\\begin{tabular}{cccc}\n\\toprule')
-    print('\\textbf{Version} & \\textbf{Result} & \\textbf{Stat} & \\textbf{95 \\% CI} \\\\ \\midrule' )
-    print('Bootstrap & H%s & -- & [%.3f, %.3f] \\\\'%(result_boot,cv_lower,cv_upper))
-    print('Classical & H%s & %.3f & [1.959, 1.959] \\\\'%(result_class,test_stat))
+    print('\\begin{center}\n\\begin{tabular}{ccc}\n\\toprule')
+    print('\\textbf{Version} & \\textbf{Result} & \\textbf{95 \\% CI} \\\\ \\midrule' )
+    print('Bootstrap & H%s & [%.3f, %.3f] \\\\'%(result_boot,cv_lower,cv_upper))
+    print('Classical & H%s & [%.3f, %.3f] \\\\'%(result_class,test_stat- 1.959,test_stat+ 1.959))
     print('\\bottomrule\n\\end{tabular}\n\\end{center}')
