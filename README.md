@@ -1,8 +1,7 @@
 # Overview
 
-I use the [Vuong (1989)](https://www.jstor.org/stable/1912557) test to understand how bidders decide whether to enter into auctions. The main datasets and anaylsis is in the `mich_data` which are data from Michigan Timber auctions scraped directly from the website. There is also a folder with `cal_data` which are auctions for california highway contracts.  Not all bidders submit bids and there is a missing data problem. To address this missing data problem, [Li and Zheng (2012)](https://www.sciencedirect.com/science/article/pii/S0304407611001679) test to see whether there is a selection bias among observed bids. 
+I use the [Vuong (1989)](https://www.jstor.org/stable/1912557) test to understand how bidders decide whether to enter into auctions. The main datasets and anaylsis is in the `mich_data` which are data from Michigan Timber auctions scraped directly from the website. This setting is similar to [Li and Zheng (2012)](https://www.sciencedirect.com/science/article/pii/S0304407611001679), who test to see whether there is a selection bias among observed bids.   There is also a folder with `cal_data` which are auctions for california highway contracts.  Not all bidders submit bids and there is a missing data problem.
 
-In the timber auctions considered, there is no pre-determined list of bidders. Which bidders where active that month is not very predictive of potential bidders. Most bidders submit less than 1 bids per month. As a result, the pool of potential bidders with missing bids appears random. 
 
 # Testing Procedure
 
@@ -17,8 +16,8 @@ In this context, a selection bias says that bidders entering have relatively hig
 
 # Michigan data
 
+The Michigan data is similar to that of [Li and Zheng (2012)](https://www.sciencedirect.com/science/article/pii/S0304407611001679). The Michigan Department of Natural Resources (MDoNR) sells standing timber through the standard first-price, sealed-bid auctions with a public reserve price. All bids are collected simultaneously. The lot is sold to the Winbid bidder who pays his bid to the state government.   I focus on the data from the Baldwin field office.  I obtained this data from the MDoNR website which is freely available and posted to an https server. This state agency is in charge of the management of state forests in Michigan. The  MDoNR provides very detailed information concerning the timber, such as the various species in the lot, the volumes of each species, the percentage of saw timber and the minimum acceptable bid (the public reserve price). My data is from January 2005 to August of 2012. I have data on 306 auctions with 1172 total bids. 
 
-The Michigan Department of Natural Resources (MDoNR) sells standing timber through the standard first-price, sealed-bid auctions with a public reserve price. All bids are collected simultaneously. The lot is sold to the Winbid bidder who pays his bid to the state government.   I focus on the data from the Baldwin field office.  I obtained this data from the MDoNR website which is freely available and posted to an https server. This state agency is in charge of the management of state forests in Michigan. The  MDoNR provides very detailed information concerning the timber, such as the various species in the lot, the volumes of each species, the percentage of saw timber and the minimum acceptable bid (the public reserve price).
 
 * `mich_scrape` contains the code for the scrape. `scrape.sh` contains the actual scraper. Once the code is scraped `create_sales.ipynb` and `create_bids.ipynb` contain the code for turning the directory structure into a usable `.csv file`
 * `merged_data` merges the sales data with the open bid data into one file which can be used for analysis.
@@ -26,8 +25,7 @@ The Michigan Department of Natural Resources (MDoNR) sells standing timber throu
 * The file `mich_data/create_panel.py` creates a balanced panel from the scrapped data. This panel can be used to run the analysis.
 * A similar dataset was used by [this](https://www.sciencedirect.com/science/article/pii/S0304407611001679) paper.
 
-
-My data is from January 2005 to August of 2012. I have data on 306 auctions with 1172 total bids. 
+In the timber auctions considered, there is no pre-determined list of bidders. Most bidders submit less than 1 bids per month. As a result, the pool of potential bidders with missing bids appears random. 
 
 # California data
 
